@@ -1,0 +1,60 @@
+﻿version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: userauth-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: userauth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d userauth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./src/user
+      dockerfile: Dockerfile
+    container_name: userauth-api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=userauth;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - JwtOptions__SecretKey=${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  migrator:
+    build:
+      context: ./src/user
+      dockerfile: Dockerfile.migrator
+    entrypoint: ["dotnet", "UserAuth.Migrations.dll"]   # ← главное!
+    command: ["--migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Database=userauth;Username=postgres;Password=${POSTGRES_PASSWORD}
+    profiles: ["tools"]
+
+volumes:
+  postgres_data:

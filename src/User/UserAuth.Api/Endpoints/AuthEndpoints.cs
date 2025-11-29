@@ -9,7 +9,7 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("/api/auth").WithTags("Authentication");
 
-        group.MapPost("/login",Login)
+        group.MapPost("/login", Login)
             .WithName("Login").WithDescription("Authenticate user and return JWT token.");
 
         group.MapPost("/register", Register)
@@ -18,17 +18,17 @@ public static class AuthEndpoints
         return app;
     }
 
-    private static async Task<IResult> Register(IUserService userService, RegisterRequest request)
+    private static async Task<IResult> Register(IUserService userService, RegisterRequest request, CancellationToken token)
     {
-        await userService.Register(request.Email, request.Password, request.Name);
+        await userService.Register(request.Email, request.Password, request.Name, token);
         
         return Results.Ok();
     }
     
-    
-    private static async Task<IResult> Login(IUserService userService, LoginRequest request)
+    private static async Task<IResult> Login(IUserService userService, LoginRequest request, HttpContext httpContext, CancellationToken cancellationToken)
     {
-        await  userService.Login(request.Email, request.Password);
-        return Results.Ok();
+        var token = await userService.Login(request.Email, request.Password, cancellationToken);
+        httpContext.Response.Cookies.Append("my-cookies", token);
+        return Results.Ok(token);
     }
 }

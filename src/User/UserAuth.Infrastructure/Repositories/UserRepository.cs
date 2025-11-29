@@ -1,7 +1,9 @@
 using System.Data;
+using System.Text;
 using Dapper;
 using UserAuth.Domain.Entities;
 using UserAuth.Domain.Interfaces;
+using UserAuth.Domain.Models;
 
 namespace UserAuth.Infrastructure.Repositories;
 
@@ -14,47 +16,97 @@ public class UserRepository : IUserRepository
         _db = db;
     }
 
-    public async Task<User?> GetByIdAsync(Guid id)
+    public async Task<User[]> SelectAsync(SelectUserModel model, CancellationToken token)
     {
-        const string sql = "SELECT * FROM \"Users\" WHERE \"Id\" = @Id";
-        return await _db.QueryFirstOrDefaultAsync<User>(sql, new { Id = id });
-    }
+        var sql = new StringBuilder(@"
+        SELECT id, email, name, hashed_password, created_at, is_active
+        FROM users
+        WHERE 1=1");
 
-    public async Task<User?> GetByEmailAsync(string email)
-    {
-        const string sql = "SELECT * FROM \"Users\" WHERE \"Email\" = @Email LIMIT 1";
-        return await _db.QueryFirstOrDefaultAsync<User>(sql, new { Email = email });
-    }
+        var parameters = new DynamicParameters();
 
-    public async Task<IEnumerable<User>> GetAllAsync()
-    {
-        const string sql = "SELECT * FROM \"Users\" ORDER BY \"CreatedAt\" DESC";
-        return await _db.QueryAsync<User>(sql);
-    }
+        if (model.Ids != null && model.Ids.Length > 0)
+        {
+            sql.Append($" AND id = ANY(@{nameof(model.Ids)})");
+            parameters.Add($"@{nameof(model.Ids)}", model.Ids);
+        }
 
-    public async Task AddAsync(User user)
+        if (model.Emails != null && model.Emails.Length > 0)
+        {
+            sql.Append($" AND email = ANY(@{nameof(model.Emails)})");
+            parameters.Add($"@{nameof(model.Emails)}", model.Emails);
+        }
+        
+        if(model.CreatedFrom != null)
+        {
+            sql.Append($" AND \"CreatedAt\" >= @{nameof(model.CreatedFrom)}");
+            parameters.Add($"@{nameof(model.CreatedFrom)}", model.CreatedFrom.Value);
+        }
+        
+        if (model.CreatedTo.HasValue)
+        {
+            sql.Append($" AND createdAt < @{nameof(model.CreatedTo)}");
+            parameters.Add($"@{nameof(model.CreatedTo)}", model.CreatedTo.Value);
+        }
+        
+        sql.Append(" ORDER BY name DESC");
+        
+        if (model.Limit.HasValue)
+        {
+            sql.Append($" LIMIT @{nameof(model.Limit)}");
+            parameters.Add($"@{nameof(model.Limit)}", model.Limit.Value);
+        }
+
+        if (model.Offset.HasValue)
+        {
+            sql.Append($" OFFSET @{nameof(model.Offset)}");
+            parameters.Add($"{nameof(model.Offset)}", model.Offset.Value);
+        }
+        
+        var users = await _db.QueryAsync<User>(
+            new CommandDefinition(sql.ToString(), 
+                parameters, 
+                cancellationToken: token));
+        
+        return users.ToArray();
+    }
+    
+    public async Task AddAsync(User user, CancellationToken token)
     {
         const string sql = @"
-            INSERT INTO ""Users"" (""Id"", ""Email"", ""Name"", ""CreatedAt"")
-            VALUES (@Id, @Email, @Name, @CreatedAt)";
-
-        await _db.ExecuteAsync(sql, user);
+            INSERT INTO users (email, hashed_password, name)
+            VALUES (@Email, @HashedPassword, @Name)";
+        
+        await _db.ExecuteAsync(new CommandDefinition(sql, new
+        {
+            user.Email,
+            user.HashedPassword,
+            user.Name,
+        }, cancellationToken: token));
     }
 
-    public async Task UpdateAsync(User user)
+    public async Task UpdateAsync(User user, CancellationToken token)
     {
         const string sql = @"
-            UPDATE ""Users""
-            SET ""Email"" = @Email,
-                ""Name"" = @Name
-            WHERE ""Id"" = @Id";
+            UPDATE users
+            SET email = COALESCE(@Email, email),
+                name = COALESCE(@Name, name),
+            WHERE id = (@Id)";
 
-        await _db.ExecuteAsync(sql, user);
+        var parameters = new
+        {
+            user.Email,
+            user.Name,
+            user.Id
+        };
+
+        await _db.ExecuteAsync(new CommandDefinition(sql, parameters, cancellationToken: token));
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, CancellationToken token)
     {
-        const string sql = "DELETE FROM \"Users\" WHERE \"Id\" = @Id";
-        await _db.ExecuteAsync(sql, new { Id = id });
+        const string sql = "DELETE FROM users WHERE id = @Id";
+        
+        await _db.ExecuteAsync(new CommandDefinition(sql, new { Id = id }, cancellationToken: token));
     }
 }

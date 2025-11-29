@@ -8,18 +8,18 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+        <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0"/>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Content Include="..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
+        <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="10.0.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.0.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.0.1" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\UserAuth.Application\UserAuth.Application.csproj" />
       <ProjectReference Include="..\UserAuth.Infrastructure\UserAuth.Infrastructure.csproj" />
+      <ProjectReference Include="..\UserAuth.Migrations\UserAuth.Migrations.csproj" />
     </ItemGroup>
 
 </Project>

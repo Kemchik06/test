@@ -1,13 +1,13 @@
 using UserAuth.Domain.Entities;
+using UserAuth.Domain.Models;
 
 namespace UserAuth.Domain.Interfaces;
 
 public interface IUserRepository
 {
-    Task<User?> GetByIdAsync(Guid id);
-    Task<User?> GetByEmailAsync(string email);
-    Task<IEnumerable<User>> GetAllAsync();
-    Task AddAsync(User user);
-    Task UpdateAsync(User user);
-    Task DeleteAsync(Guid id);
+    
+    Task AddAsync(User user, CancellationToken token);
+    Task<User[]> SelectAsync(SelectUserModel model, CancellationToken token);
+    Task UpdateAsync(User user, CancellationToken token);
+    Task DeleteAsync(Guid id, CancellationToken token);
 }
