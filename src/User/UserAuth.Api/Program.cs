@@ -1,6 +1,7 @@
 using System.Data;
 using FluentMigrator.Runner;
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Npgsql;
 using UserAuth.Api.Configuration;
@@ -39,6 +40,13 @@ app.UseSwaggerUI();
 
 app.MapAuthEndpoints();
 app.MapUserEndpoints();
+
+app.UseCookiePolicy(new CookiePolicyOptions
+{
+    MinimumSameSitePolicy = SameSiteMode.Strict,
+    HttpOnly = HttpOnlyPolicy.Always,
+    Secure = CookieSecurePolicy.Always,
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
