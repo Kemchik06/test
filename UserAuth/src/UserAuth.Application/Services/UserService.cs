@@ -46,7 +46,7 @@ public class UserService : IUserService
             throw new Exception($"User with email {email} not found");
         }
         
-        var result =_passwordHasher.VerifyPassword(password, user.HashedPassword);
+        var result = _passwordHasher.VerifyPassword(password, user.HashedPassword);
         if (!result)
         {
             throw new Exception("Invalid password");
