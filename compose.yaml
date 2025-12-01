@@ -22,7 +22,7 @@ services:
 
   api:
     build:
-      context: ./src/user
+      context: ./UserAuth/src
       dockerfile: Dockerfile
     container_name: userauth-api
     restart: unless-stopped
@@ -45,7 +45,7 @@ services:
 
   migrator:
     build:
-      context: ./src/user
+      context: ./UserAuth/src
       dockerfile: Dockerfile.migrator
     entrypoint: ["dotnet", "UserAuth.Migrations.dll"]   # ← главное!
     command: ["--migrate"]
